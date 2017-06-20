@@ -10,6 +10,7 @@
 import UIKit
 import AVFoundation
 import Photos
+import DSWaveformImage
 
 //MARK: - Error
 enum DubError: Error {
@@ -59,19 +60,52 @@ class DUBViewController: UIViewController {
         cameraPreview.frame = view.frame
         view.addSubview(cameraPreview)
         view.bringSubview(toFront: cameraPreview)
-
-        //Observe the video end
-        NotificationCenter.default.addObserver(self, selector: #selector(saveVideoButtonTapped), name: NSNotification.Name(rawValue: DUBSaveDubsmashVideoNotification), object: nil)
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        
-        navigationController?.isNavigationBarHidden = true
         
         setBackButton()
         setUpRecordButton()
         prepareCaptureSession()
+        
+        if AVCaptureDevice.authorizationStatus(forMediaType: AVMediaTypeVideo) ==  AVAuthorizationStatus.authorized {
+            setBackButton()
+            setUpRecordButton()
+            prepareCaptureSession()
+        } else {
+            AVCaptureDevice.requestAccess(forMediaType: AVMediaTypeVideo, completionHandler: { (granted :Bool) -> Void in
+                if granted == true {
+                    self.setBackButton()
+                    self.setUpRecordButton()
+                    self.prepareCaptureSession()
+                } else {
+                    // User Rejected
+                }
+            })
+        }
+        
+        //Observe the video end
+        NotificationCenter.default.addObserver(self, selector: #selector(saveVideoButtonTapped), name: NSNotification.Name(rawValue: DUBSaveDubsmashVideoNotification), object: nil)
+    }
+
+    //temporary function for drawing waveform
+    fileprivate func setUpWaveFormView(url: URL) {
+        let imageView = UIImageView()
+        imageView.frame = CGRect.init(x: 0, y: 0, width: view.frame.width, height: 100)
+        view.addSubview(imageView)
+        view.bringSubview(toFront: imageView)
+        let waveformImageDrawer = WaveformImageDrawer()
+        
+        if let bottomWaveformImage = waveformImageDrawer.waveformImage(fromAudioAt: url,
+                                                                    size: imageView.bounds.size,
+                                                                    color: UIColor.blue,
+                                                                    style: WaveformStyle.filled,
+                                                                    paddingFactor: CGFloat(5.0)) {
+            imageView.image = bottomWaveformImage
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        navigationController?.isNavigationBarHidden = true
     }
     
 }
@@ -315,17 +349,8 @@ extension DUBViewController {
 
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             guard let player = audioPlayer else { return }
-            
-            let progressView = UIProgressView(progressViewStyle: .bar)
-            progressView.frame = CGRect(x: 0, y: 0, width: view.frame.size.width, height: 50)
-            progressView.progressTintColor = UIColor.magenta
-            view.addSubview(progressView)
-            UIView.animate(withDuration: 3, animations: { () -> Void in
-                
-                progressView.transform = CGAffineTransform(scaleX: 1.0, y: 30.0)
-                progressView.setProgress(1.0, animated: true)
-                player.play()
-            })
+            setUpWaveFormView(url: url)
+            player.play()
         } catch let error {
             print(error.localizedDescription)
         }
@@ -344,13 +369,26 @@ extension DUBViewController {
         
         //Save to camera roll before exporting to documents
         if let videoUrl = notification.object as? URL {
-            UISaveVideoAtPathToSavedPhotosAlbum(videoUrl.path, nil, nil, nil)
             
-            let alertController = UIAlertController(title: "Your Dub saved successfully", message: nil, preferredStyle: .alert)
-            alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { (action) in
-                self.navigationController?.popToRootViewController(animated: true)
-            }))
-            present(alertController, animated: true, completion: nil)
+            let photos = PHPhotoLibrary.authorizationStatus()
+            if photos == .notDetermined {
+                PHPhotoLibrary.requestAuthorization({status in
+                    if status == .authorized {
+                        UISaveVideoAtPathToSavedPhotosAlbum(videoUrl.path, nil, nil, nil)
+                        let alertController = UIAlertController(title: "Your Dub saved successfully", message: nil, preferredStyle: .alert)
+                        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { (action) in
+                            self.navigationController?.popToRootViewController(animated: true)
+                        }))
+                        self.present(alertController, animated: true, completion: nil)
+                    } else {
+                        let alertController = UIAlertController(title: "Your Dub couldn't be saved since user decline to give permission to access PhotoLibrary", message: nil, preferredStyle: .alert)
+                        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { (action) in
+                            self.navigationController?.popToRootViewController(animated: true)
+                        }))
+                        self.present(alertController, animated: true, completion: nil)
+                    }
+                })
+            }
         }
     }
     

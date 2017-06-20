@@ -12,8 +12,8 @@ import CoreData
 
 extension DUBVideos {
 
-    @nonobjc public class func fetchRequest() -> NSFetchRequest<DUBVideos> {
-        return NSFetchRequest<DUBVideos>(entityName: "DUBVideos")
+    @nonobjc open override class func fetchRequest() -> NSFetchRequest<NSFetchRequestResult> {
+        return NSFetchRequest<DUBVideos>(entityName: "DUBVideos") as! NSFetchRequest<NSFetchRequestResult>
     }
 
     @NSManaged public var fileName: String?

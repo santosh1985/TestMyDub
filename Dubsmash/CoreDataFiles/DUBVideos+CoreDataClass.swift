@@ -10,6 +10,6 @@ import Foundation
 import CoreData
 
 
-public class DUBVideos: NSManagedObject {
+open class DUBVideos: NSManagedObject {
 
 }

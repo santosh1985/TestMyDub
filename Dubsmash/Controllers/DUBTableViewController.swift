@@ -63,7 +63,7 @@ extension DUBTableViewController {
      */
     fileprivate func getData() {
         do {
-            videos = try context.fetch(DUBVideos.fetchRequest())
+            videos = try context.fetch(DUBVideos.fetchRequest()) as! [DUBVideos]
             if videos.count > 0 {
                 self.tableView.reloadData()
             }
@@ -77,7 +77,7 @@ extension DUBTableViewController {
      
      - Parameter videoUrl: URL of the video file
      */
-    fileprivate func playVideoInfinitely(videoUrl: URL) {
+    fileprivate func playVideoInfinitely(_ videoUrl: URL) {
         
         saveCustomView = DUBSaveCustomView()
         saveCustomView?.frame = view.bounds
@@ -101,7 +101,7 @@ extension DUBTableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         var cell = tableView.dequeueReusableCell(withIdentifier: cellReuseIdentifier, for: indexPath)
-        configureCell(cell: &cell, indexPath: indexPath)
+        configureCell(&cell, indexPath: indexPath)
         
         return cell
     }
@@ -111,7 +111,7 @@ extension DUBTableViewController {
      - Parameter cell: 'inout' cell to be configured
      - Parameter indexPath: IndexPath of the cell to be configured
      */
-    fileprivate func configureCell(cell: inout UITableViewCell, indexPath: IndexPath) {
+    fileprivate func configureCell(_ cell: inout UITableViewCell, indexPath: IndexPath) {
         
         let video = videos[indexPath.row]
         
@@ -132,7 +132,7 @@ extension DUBTableViewController {
         let videoFile = videos[indexPath.row]
         if let fileName = videoFile.fileName {
             
-            let url = NSURL(fileURLWithPath: fileName)
+            let url = URL(fileURLWithPath: fileName)
             
             let startVC = DUBStartViewController()
             startVC.videoUrl = url as URL
